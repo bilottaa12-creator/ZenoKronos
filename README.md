@@ -4,7 +4,7 @@
 
 # ⚡ Z E N O K R O N O S ⚡
 
-*Il bot Discord definitivo per la moderazione avanzata, la sicurezza e l'intrattenimento.*
+*La fusione definitiva tra potenza e protezione.*
 
 [![Status](https://img.shields.io/badge/Stato-Online-success?style=for-the-badge&logo=probot)](https://github.com)
 [![Lingua](https://img.shields.io/badge/Lingua-Italiano-blue?style=for-the-badge)](https://github.com)
@@ -13,15 +13,17 @@
 
 ---
 
-## 🏛️ Che cos'è Zenokronos?
+## 🏛️ L'Alleanza Divina: Cos'è Zenokronos?
 
-**Zenokronos** è un bot intelligente e potente progettato per proteggere i server Discord da raid, spam e attacchi, offrendo al contempo strumenti di moderazione rapidi e funzioni basate sull'IA per animare la community.
+**Zenokronos** non è solo un bot, è il frutto leggendario di una collaborazione epica tra **Sicurezza Bot** e **Zeno Bot**. 
+
+Unendo la roccia della protezione assoluta e la genialità dell'intelligenza artificiale e dell'intrattenimento, è nata un'entità unica nel suo genere, progettata per dominare e proteggere qualsiasi server Discord con stile e potenza divina.
 
 ---
 
 ## 🔒 Caratteristiche Principali
 
-* **Protezione Totale:** Anti-spam automatico, anti-nuke e blocco link sospetti per mantenere il server pulito e sicuro.
+* **Protezione Totale:** Anti-spam automatico, anti-nuke e blocco link sospetti ereditati dalla massima sicurezza.
 * **Moderazione Rapida:** Strumenti immediati per gestire lockdown, timeout, avvertimenti (warn) e pulizia messaggi.
 * **Intelligenza Artificiale:** Comandi interattivi per fare domande, duellare e metterti alla prova con quiz automatici.
 * **Utility e Community:** Classifiche dei messaggi, sistema AFK, messaggi di benvenuto e informazioni dettagliate sul server.
