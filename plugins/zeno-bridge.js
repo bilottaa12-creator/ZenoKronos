@@ -1,10 +1,3 @@
-// ============================================
-// ZENO BRIDGE
-// Ponte tra il tuo motore (index.js) e i plugin di ZenoBot (cartella zeno/plugins/).
-// I plugin di Zeno restano IDENTICI: questo file parla il loro "linguaggio"
-// (comando con regex, messageHook, slash command, bottoni) e si presenta al tuo
-// motore come un plugin normale (name + onMessage + onReady).
-// ============================================
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
@@ -12,12 +5,9 @@ const { MessageFlags, PermissionFlagsBits, Routes } = require('discord.js');
 
 const ZENO_PLUGINS_DIR = path.join(__dirname, '..', 'zeno', 'plugins');
 
-// Il main.js di Zeno usa process.env.TOKEN, il tuo index.js DISCORD_TOKEN: li allineo
-// (serve se qualche plugin di Zeno legge process.env.TOKEN)
 process.env.TOKEN = process.env.TOKEN || process.env.DISCORD_TOKEN;
 
-// I comandi di Zeno rispondono solo a questi prefissi. "!" e' riservato ai tuoi plugin:
-// cosi' .ping (Zeno) e !ping (tuo) non possono mai scattare insieme.
+
 const DEFAULT_PREFIX = '.';
 const RESERVED_PREFIXES = ['!'];
 
@@ -27,7 +17,7 @@ const components = new Map();  // prefisso customId -> modulo (bottoni, menu, mo
 let loaded = false;            // true dopo il primo caricamento dei plugin di Zeno
 let listenersAttached = false;
 
-// Alcuni plugin di Zeno la usano (scrittura JSON "atomica": prima un .tmp, poi rename)
+// Alcuni plugin di Zeno usano (scrittura JSON "atomica": prima un .tmp, poi rename)
 global.saveJsonAtomic = function (filePath, data) {
     const tempPath = `${filePath}.tmp`;
     fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
@@ -36,8 +26,6 @@ global.saveJsonAtomic = function (filePath, data) {
 
 // ============================================
 // HELPER DI ZENO (soloadmin, owner, prefix)
-// Si leggono dagli stessi moduli caricati come plugin: cosi' lo stato che cambia
-// un comando (es. .soloadminon) e' quello che i controlli leggono, anche dopo un reload.
 // ============================================
 function zenoHelper(file, name, fallback) {
     const fn = zenoModules[file]?.[name];
@@ -182,7 +170,7 @@ async function handleInteraction(i, client) {
 module.exports = {
     name: 'zeno-bridge',
 
-    // Il motore chiama onReady a bot connesso: qui carichiamo i plugin di Zeno
+    // Il motore chiama onReady a bot connesso: qui carico i plugin di Zeno
     async onReady({ client }) {
         global.zenoConn = client;
         globalThis.zeno = { reload: () => reloadAll(client) }; // usato da plugins/reload.js di Zeno
@@ -195,7 +183,7 @@ module.exports = {
         }
     },
 
-    // Il motore chiama onMessage per ogni messaggio (non ritorniamo mai true: non blocchiamo gli altri plugin)
+    // Il motore chiama onMessage per ogni messaggio
     async onMessage(message, { client }) {
         if (!loaded || message.author.bot) return;
 
