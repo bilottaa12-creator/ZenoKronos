@@ -1,6 +1,9 @@
 <div align="center">
 
-# ⚡ ZenoKronos
+  <img src="https://share.google/XAsAmtkba3fDDqzI0" alt="ZenoKronos Banner" width="100%" />
+
+  # ⚡ ZenoKronos
+
 
 **Bot Discord per Moderazione, Sicurezza, AI e Intrattenimento**
 
