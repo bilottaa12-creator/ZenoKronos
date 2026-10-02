@@ -1,7 +1,5 @@
 <div align="center">
 
-  <img src="https://share.google/XAsAmtkba3fDDqzI0" alt="ZenoKronos Banner" width="100%" />
-
   # ⚡ ZenoKronos
 
 
