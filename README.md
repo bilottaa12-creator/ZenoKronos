@@ -1,9 +1,15 @@
 <div align="center">
 
-  # ⚡ ZenoKronos
+<img src="https://i.postimg.cc/c4FsXMCm/copy-A9C8EA0A-286A-4ADA-813B-EDC08596E0DC.jpg" width="100%" alt="Zenokronos Banner">
 
+# ⚡ Z E N O K R O N O S ⚡
+
+*La fusione definitiva tra potenza e protezione.*
 
 **Bot Discord per Moderazione, Sicurezza, AI e Intrattenimento**
+
+[![Status](https://img.shields.io/badge/Stato-Online-success?style=for-the-badge&logo=probot)](https://github.com)
+[![Lingua](https://img.shields.io/badge/Lingua-Italiano-blue?style=for-the-badge)](https://github.com)
 
 ![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)
 ![NodeJS](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
@@ -20,25 +26,26 @@
 ---
 
 ## 📌 Indice
-- [🚀 Informazioni sul Progetto](#-informazioni-sul-progetto)
+- [🏛️ L'Alleanza Divina](#️-lalleanza-divina-cos-è-zenokronos)
 - [⚡ Funzionalità Principali](#-funzionalità-principali)
   - [🛡️ Sicurezza & Moderazione (`!`)](#️-sicurezza--moderazione-)
   - [🤖 Intelligenza Artificiale (`!`)](#-intelligenza-artificiale-)
   - [🎉 Intrattenimento & Utility (`!`)](#-intrattenimento--utility-)
   - [🎵 ZenoBot Plugins (`.`)](#-zenobot-plugins-)
 - [🧱 Architettura & Bridge](#-architettura--bridge)
-- [🛠️ Configurazione & Deploy](#️️-configurazione--deploy)
-- [🔌 Sviluppare Nuovi Plugin](#-sviluppare-nuovi-plugin)
-- [🔒 Permessi Richiesti](#-permessi-richiesti)
-- [👥 Autori](#-autori)
+- [🚀 Aggiungi il Bot al Server](#-aggiungi-il-bot-al-server)
 
 ---
 
-## 🚀 Informazioni sul Progetto
+## 🏛️ L'Alleanza Divina: Cos'è Zenokronos?
 
-**ZenoKronos** nasce dall'unione di due progetti:
-* **SicurezzaBot**: Sistema avanzato per sicurezza, moderazione automatica, AI e intrattenimento.
-* **ZenoBot**: Collezione di oltre 60 plugin gestiti da Yervinboss.
+**Zenokronos** non è solo un bot, è il frutto leggendario di una collaborazione epica tra **Sicurezza Bot** e **Zeno Bot**.
+
+Unendo la roccia della protezione assoluta e la genialità dell'intelligenza artificiale e dell'intrattenimento, è nata un'entità unica nel suo genere, progettata per dominare e proteggere qualsiasi server Discord con stile e potenza divina.
+
+Nasce dall'unione di due progetti:
+* **SicurezzaBot**: sistema avanzato per sicurezza, moderazione automatica, AI e intrattenimento.
+* **ZenoBot**: collezione di oltre 60 plugin gestiti da **Zeno**.
 
 Il bot gestisce due famiglie di comandi simultaneamente:
 * **`!`** — Comandi nativi di sicurezza, AI e utility.
@@ -114,3 +121,16 @@ L'applicazione segue una struttura modulare basata su plugin:
 └── zeno/                     # Moduli ZenoBot (ESM - Prefisso .)
     ├── package.json          # {"type": "module"}
     └── plugins/              # Plugin originali ZenoBot
+```
+
+---
+
+## 🚀 Aggiungi il Bot al Server
+
+Porta la potenza di Zenokronos nel tuo server. Clicca sul pulsante qui sotto per invitare il bot:
+
+<div align="center">
+
+[🔗 **INVITA ZENOKRONOS**](https://discord.com/oauth2/authorize?client_id=1536121062599688222&permissions=8&integration_type=0&scope=bot)
+
+</div>
