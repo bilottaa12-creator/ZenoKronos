@@ -43,7 +43,7 @@ function buildPanel(client, latency, note = '') {
   const heapTotalMB = (mem.heapTotal / (1024 * 1024)).toFixed(2);
 
   const embed = new EmbedBuilder()
-    .setTitle('𝐙𝐞𝐧𝐨𝐁𝐨𝐭 🭵 𝐒𝐲𝐬𝐭𝐞𝚖 𝐌𝐨𝐧𝐢𝐭𝐨𝐫')
+    .setTitle('𝐙𝐞𝐧𝐨Kronos 𝐒𝐲𝐬𝐭𝐞𝚖 𝐌𝐨𝐧𝐢𝐭𝐨𝐫')
     .setColor(0x5865f2)
     .setDescription(
       `🌐 𝚲𝐓𝐓𝕀𝐕𝕀𝐓𝚲: ${uptime}\n` +
