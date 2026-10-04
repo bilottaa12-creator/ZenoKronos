@@ -147,7 +147,7 @@ async function kickCmd(ctx, { text = '' } = {}) {
         { name: '📝 Motivo', value: reason, inline: false },
         { name: '👮 Moderatore', value: `${ctx.user || ctx.author}`, inline: true },
       )
-      .setFooter({ text: 'Zeno Bot • Moderazione' })
+      .setFooter({ text: 'ZenoKronos • Moderazione' })
       .setTimestamp();
 
     const payload = { embeds: [embed] };
