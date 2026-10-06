@@ -1,13 +1,40 @@
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
+const { execFile } = require('child_process');
 const { MessageFlags, PermissionFlagsBits, Routes } = require('discord.js');
 
 const ZENO_PLUGINS_DIR = path.join(__dirname, '..', 'zeno', 'plugins');
 
+// Il main.js di Zeno usa process.env.TOKEN, il mio index.js DISCORD_TOKEN: li allineo
+// (serve se qualche plugin di Zeno legge process.env.TOKEN)
 process.env.TOKEN = process.env.TOKEN || process.env.DISCORD_TOKEN;
 
+// yt-dlp (usato dai plugin canzone) e' un programma a parte: il Build Command su Render lo
+// scarica in bin/. Qui aggiungiamo bin/ al PATH, cosi' i plugin lo trovano anche senza
+// toccare lo Start Command.
+const BIN_DIR = path.join(__dirname, '..', 'bin');
+process.env.PATH = `${BIN_DIR}${path.delimiter}${process.env.PATH || ''}`;
 
+// Controlla all'avvio che i programmi esterni usati dai plugin siano raggiungibili
+// (stessa ricerca nel PATH che fanno i plugin con execFile) e lo scrive nei log.
+function checkTool(name, args, consequence) {
+    execFile(name, args, { timeout: 15000 }, (err, stdout) => {
+        if (err) {
+            console.warn(`⚠️ [zeno-bridge] ${name} NON trovato (${err.code || err.message}): ${consequence} Controlla che il Build Command lo scarichi in bin/.`);
+        } else {
+            console.log(`✅ [zeno-bridge] ${name} pronto (${String(stdout).split('\n')[0].trim().slice(0, 40)})`);
+        }
+    });
+}
+
+function checkExternalTools() {
+    checkTool('yt-dlp', ['--version'], 'audio e video dei plugin canzone non funzioneranno.');
+    checkTool('ffmpeg', ['-version'], 'shazam, sticker e le conversioni audio non funzioneranno.');
+}
+
+// I comandi di Zeno rispondono solo a questi prefissi. "!" e' riservato ai tuoi plugin:
+// cosi' .ping (Zeno) e !ping (tuo) non possono mai scattare insieme.
 const DEFAULT_PREFIX = '.';
 const RESERVED_PREFIXES = ['!'];
 
@@ -17,7 +44,7 @@ const components = new Map();  // prefisso customId -> modulo (bottoni, menu, mo
 let loaded = false;            // true dopo il primo caricamento dei plugin di Zeno
 let listenersAttached = false;
 
-// Alcuni plugin di Zeno usano (scrittura JSON "atomica": prima un .tmp, poi rename)
+// Alcuni plugin di Zeno la usano (scrittura JSON "atomica": prima un .tmp, poi rename)
 global.saveJsonAtomic = function (filePath, data) {
     const tempPath = `${filePath}.tmp`;
     fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
@@ -26,6 +53,8 @@ global.saveJsonAtomic = function (filePath, data) {
 
 // ============================================
 // HELPER DI ZENO (soloadmin, owner, prefix)
+// Si leggono dagli stessi moduli caricati come plugin: cosi' lo stato che cambia
+// un comando (es. .soloadminon) e' quello che i controlli leggono, anche dopo un reload.
 // ============================================
 function zenoHelper(file, name, fallback) {
     const fn = zenoModules[file]?.[name];
@@ -165,14 +194,15 @@ async function handleInteraction(i, client) {
 }
 
 // ============================================
-// PLUGIN PER IL TUO MOTORE
+// PLUGIN PER IL MIO MOTORE
 // ============================================
 module.exports = {
     name: 'zeno-bridge',
 
-    // Il motore chiama onReady a bot connesso: qui carico i plugin di Zeno
+    // Il motore chiama onReady a bot connesso: qui carichiamo i plugin di Zeno
     async onReady({ client }) {
         global.zenoConn = client;
+        checkExternalTools();
         globalThis.zeno = { reload: () => reloadAll(client) }; // usato da plugins/reload.js di Zeno
         await reloadAll(client);
 
@@ -183,7 +213,7 @@ module.exports = {
         }
     },
 
-    // Il motore chiama onMessage per ogni messaggio
+    // Il motore chiama onMessage per ogni messaggio (non ritorniamo mai true: non blocchiamo gli altri plugin)
     async onMessage(message, { client }) {
         if (!loaded || message.author.bot) return;
 
