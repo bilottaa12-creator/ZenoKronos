@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { execFile } = require('child_process');
+const os = require('os');
 const { MessageFlags, PermissionFlagsBits, Routes } = require('discord.js');
 
 const ZENO_PLUGINS_DIR = path.join(__dirname, '..', 'zeno', 'plugins');
@@ -31,6 +32,41 @@ function checkTool(name, args, consequence) {
 function checkExternalTools() {
     checkTool('yt-dlp', ['--version'], 'audio e video dei plugin canzone non funzioneranno.');
     checkTool('ffmpeg', ['-version'], 'shazam, sticker e le conversioni audio non funzioneranno.');
+}
+
+// Cookie di YouTube (opzionale). Su Render si caricano come Secret File "cookies.txt": al
+// runtime stanno in /etc/secrets/cookies.txt, in sola lettura. yt-dlp riscrive il file dei
+// cookie a fine lavoro, quindi lo copiamo in una posizione scrivibile e lo indichiamo con un
+// yt-dlp.conf accanto al programma: cosi' vale per tutti i plugin, senza modificarli.
+const COOKIES_SRC = process.env.YT_COOKIES_FILE || '/etc/secrets/cookies.txt';
+const COOKIES_DEST = path.join(os.tmpdir(), 'yt-cookies.txt');
+const YTDLP_CONF = path.join(BIN_DIR, 'yt-dlp.conf');
+const CONF_MARKER = '# generato da zeno-bridge';
+
+function setupYtDlpCookies() {
+    try {
+        if (!fs.existsSync(COOKIES_SRC)) {
+            // niente cookie: togliamo un'eventuale config lasciata da un avvio precedente
+            if (fs.existsSync(YTDLP_CONF) && fs.readFileSync(YTDLP_CONF, 'utf8').startsWith(CONF_MARKER)) {
+                fs.rmSync(YTDLP_CONF);
+            }
+            console.log('ℹ️ [zeno-bridge] Nessun cookies.txt: yt-dlp parte senza cookie di YouTube.');
+            return;
+        }
+        // Formato Linux (LF): con i ritorni a capo di Windows yt-dlp da' "HTTP Error 400"
+        const content = fs.readFileSync(COOKIES_SRC, 'utf8').replace(/\r\n/g, '\n');
+        const first = content.split('\n')[0].trim();
+        if (first !== '# Netscape HTTP Cookie File' && first !== '# HTTP Cookie File') {
+            console.warn(`⚠️ [zeno-bridge] ${COOKIES_SRC} ignorato: la prima riga deve essere "# Netscape HTTP Cookie File" (formato Netscape).`);
+            return;
+        }
+        fs.writeFileSync(COOKIES_DEST, content, { mode: 0o600 });
+        fs.mkdirSync(BIN_DIR, { recursive: true });
+        fs.writeFileSync(YTDLP_CONF, `${CONF_MARKER}\n--cookies ${COOKIES_DEST}\n`);
+        console.log('✅ [zeno-bridge] Cookie di YouTube caricati: yt-dlp li userà.');
+    } catch (err) {
+        console.warn(`⚠️ [zeno-bridge] Impossibile preparare i cookie di YouTube: ${err.message}`);
+    }
 }
 
 // I comandi di Zeno rispondono solo a questi prefissi. "!" e' riservato ai tuoi plugin:
@@ -202,6 +238,7 @@ module.exports = {
     // Il motore chiama onReady a bot connesso: qui carichiamo i plugin di Zeno
     async onReady({ client }) {
         global.zenoConn = client;
+        setupYtDlpCookies();
         checkExternalTools();
         globalThis.zeno = { reload: () => reloadAll(client) }; // usato da plugins/reload.js di Zeno
         await reloadAll(client);
