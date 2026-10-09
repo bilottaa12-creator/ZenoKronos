@@ -1,17 +1,13 @@
 import yts from 'yt-search';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
 import {
   SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   AttachmentBuilder, MessageFlags,
 } from 'discord.js';
+import { MAX_UPLOAD, downloadAudio, downloadVideo, explainDownloadError, isBusy } from '../lib/ytdl.js';
 
-const run = promisify(execFile);
 const PLAYLIST_DB = path.resolve('playlist_db.json');
-const MAX_UPLOAD = 10 * 1024 * 1024; // limite upload Discord
 const MAX_VIDEO_SEC = 480;           // max 8 minuti per i video
 const YT_ID = /^[\w-]{11}$/;
 const COLOR = 0x5865f2;
@@ -19,10 +15,9 @@ const COLOR = 0x5865f2;
 global.tpCache = global.tpCache || new Map(); // uid -> { ts, artist, videos }
 
 // ───────────── Utility ─────────────
-const tmp = (name) => path.join(os.tmpdir(), name);
 const rm = (p) => { try { if (p && fs.existsSync(p)) fs.rmSync(p, { force: true }); } catch {} };
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
-const safeName = (t) => (t || '').replace(/[^\w\s-]/g, '').trim().slice(0, 60) || 'zeno';
+const safeName = (t) => (t || '').replace(/[^\p{L}\p{N}\s-]/gu, '').trim().slice(0, 60) || 'zeno';
 const thumb = (v) => v?.thumbnail || v?.image || null;
 const views = (v) => (v?.views ?? 0).toLocaleString('it-IT');
 const cid = (action, uid, arg) => `tp:${action}:${uid}:${arg}`;
@@ -38,16 +33,6 @@ const readDb = () => {
   if (!fs.existsSync(PLAYLIST_DB)) return {};
   try { return JSON.parse(fs.readFileSync(PLAYLIST_DB, 'utf8')); } catch { return {}; }
 };
-
-async function probe(file) {
-  try {
-    const { stdout } = await run('ffprobe', [
-      '-v', 'error', '-show_entries', 'format=duration',
-      '-of', 'default=noprint_wrappers=1:nokey=1', file,
-    ]);
-    return parseFloat(stdout.trim()) || 0;
-  } catch { return 0; }
-}
 
 // ───────────── Top 5 del cantante ─────────────
 // Non esiste una classifica ufficiale accessibile: cerco i brani dell'artista su YouTube,
@@ -89,31 +74,6 @@ async function getVideo(uid, id) {
   try { return await yts({ videoId: id }); } catch { return null; }
 }
 
-// ───────────── Download ─────────────
-async function downloadAudio(id) {
-  const base = tmp(`zeno_tp_${id}_${Date.now()}`);
-  await run('yt-dlp', [
-    '--no-playlist', '-q', '--no-warnings', '--no-progress',
-    '-x', '--audio-format', 'mp3', '--audio-quality', '128K',
-    '--extractor-args', 'youtube:player-client=android,web',
-    '-o', `${base}.%(ext)s`, url(id),
-  ], { timeout: 5 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 });
-  const file = `${base}.mp3`;
-  if (!fs.existsSync(file)) throw new Error('file non generato');
-  return file;
-}
-
-async function downloadVideo(id, raw) {
-  await run('yt-dlp', [
-    '--no-playlist', '-q', '--no-warnings', '--no-progress',
-    '-f', 'bestvideo[vcodec^=avc1][height<=480]+bestaudio[acodec^=mp4a]/best[vcodec^=avc1][height<=480]/best[height<=480]/best',
-    '--merge-output-format', 'mp4', '--no-part', '--retries', '3',
-    '--extractor-args', 'youtube:player-client=android,web',
-    '-o', raw, url(id),
-  ], { timeout: 5 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 });
-  if (!fs.existsSync(raw)) throw new Error('file non generato');
-}
-
 // ───────────── Scheda scorrevole (carosello) ─────────────
 // Una sola scheda per volta: le frecce ◀ ▶ scorrono tra le 5 canzoni (in modo circolare)
 function buildCard(uid, index) {
@@ -153,13 +113,16 @@ function buildCard(uid, index) {
 }
 
 // ───────────── Azioni dei pulsanti ─────────────
+const BUSY = '⏳ Sto già scaricando altri brani, riprova tra qualche secondo.';
+
 async function sendAudio(i, uid, id) {
+  if (isBusy()) return i.reply({ content: BUSY, flags: MessageFlags.Ephemeral });
   await i.deferReply();
   const v = await getVideo(uid, id);
   const title = v?.title || 'Brano';
   let file = null;
   try {
-    file = await downloadAudio(id);
+    file = await downloadAudio(url(id), { quality: '128K' });
     if (fs.statSync(file).size > MAX_UPLOAD) {
       return await i.editReply('❌ Il file supera il limite di upload di Discord (10 MB).');
     }
@@ -169,47 +132,26 @@ async function sendAudio(i, uid, id) {
     });
   } catch (e) {
     console.error('Errore audio:', e.stderr || e.message);
-    await i.editReply('❌ Errore audio').catch(() => {});
+    await i.editReply(explainDownloadError(e, '❌ Errore audio')).catch(() => {});
   } finally {
     rm(file);
   }
 }
 
 async function sendVideo(i, uid, id) {
+  if (isBusy()) return i.reply({ content: BUSY, flags: MessageFlags.Ephemeral });
   await i.deferReply();
   const v = await getVideo(uid, id);
   if (v?.seconds > MAX_VIDEO_SEC) return i.editReply('❌ Max 8 minuti');
 
   await i.editReply('🎬 Scarico il video...');
-  const base = tmp(`zeno_tpv_${id}_${Date.now()}`);
-  const raw = `${base}_raw.mp4`;
-  const out = `${base}_out.mp4`;
-
+  let file = null;
   try {
-    await downloadVideo(id, raw);
-    let file = raw;
-
-    // Se supera i 10 MB lo ricomprimo a 360p con bitrate calcolato sulla durata
-    if (fs.statSync(raw).size > MAX_UPLOAD) {
-      const dur = (await probe(raw)) || v?.seconds || 240;
-      const videoKbps = Math.floor((MAX_UPLOAD * 0.9 * 8) / dur / 1000) - 64;
-      if (videoKbps < 120) {
-        return await i.editReply('❌ Video troppo pesante per il limite di Discord (10 MB).');
-      }
-      await i.editReply('🎬 Comprimo il video per Discord...');
-      await run('ffmpeg', [
-        '-y', '-i', raw,
-        '-c:v', 'libx264', '-preset', 'veryfast',
-        '-b:v', `${videoKbps}k`, '-maxrate', `${videoKbps}k`, '-bufsize', `${videoKbps * 2}k`,
-        '-vf', 'scale=-2:360',
-        '-c:a', 'aac', '-b:a', '64k', '-movflags', '+faststart', out,
-      ], { timeout: 10 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 });
-      file = out;
-      if (fs.statSync(out).size > MAX_UPLOAD) {
-        return await i.editReply('❌ Video troppo pesante per il limite di Discord (10 MB).');
-      }
-    }
-
+    // Se supera i 10 MB il modulo lo ricomprime a 360p con bitrate calcolato sulla durata
+    file = await downloadVideo(url(id), {
+      durationHint: v?.seconds,
+      onCompress: () => i.editReply('🎬 Comprimo il video per Discord...').catch(() => {}),
+    });
     const title = v?.title || 'Video';
     await i.editReply({
       content: `🎬 **${title}**`,
@@ -217,10 +159,9 @@ async function sendVideo(i, uid, id) {
     });
   } catch (e) {
     console.error('Errore video:', e.stderr || e.message);
-    await i.editReply('❌ Errore video').catch(() => {});
+    await i.editReply(explainDownloadError(e, '❌ Errore video')).catch(() => {});
   } finally {
-    rm(raw);
-    rm(out);
+    rm(file);
   }
 }
 
