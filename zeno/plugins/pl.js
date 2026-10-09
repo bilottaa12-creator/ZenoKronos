@@ -9,6 +9,7 @@ import {
   StringSelectMenuBuilder, AttachmentBuilder, MessageFlags,
   ModalBuilder, TextInputBuilder, TextInputStyle,
 } from 'discord.js';
+import { downloadAudio as ytAudio, explainDownloadError, isBusy } from '../lib/ytdl.js';
 
 const run = promisify(execFile);
 const PLAYLIST_DB = path.resolve('playlist_db.json');
@@ -95,7 +96,7 @@ const saveDb = (data) => global.saveJsonAtomic(PLAYLIST_DB, data);
 const tmp = (name) => path.join(os.tmpdir(), name);
 const rm = (p) => { try { if (p && fs.existsSync(p)) fs.rmSync(p, { recursive: true, force: true }); } catch {} };
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
-const safeName = (t) => (t || '').replace(/[^\w\s-]/g, '').trim().slice(0, 60) || 'zeno';
+const safeName = (t) => (t || '').replace(/[^\p{L}\p{N}\s-]/gu, '').trim().slice(0, 60) || 'zeno';
 const isInteraction = (ctx) => typeof ctx.isChatInputCommand === 'function';
 const cid = (action, uid, extra) => `pl:${action}:${uid}${extra !== undefined ? `:${extra}` : ''}`;
 
@@ -173,7 +174,7 @@ async function fetchLinkTracks(link) {
   }
 
   const { stdout } = await run(
-    'yt-dlp', ['--flat-playlist', '--dump-json', '--no-warnings', link],
+    'yt-dlp', ['--flat-playlist', '--dump-json', link],
     { maxBuffer: 20 * 1024 * 1024, timeout: 2 * 60 * 1000 },
   );
 
@@ -187,21 +188,9 @@ async function fetchLinkTracks(link) {
   }).filter(Boolean);
 }
 
-// ───────────── Download audio (yt-dlp, senza shell) ─────────────
-async function downloadAudio(url, quality = '128K') {
-  const base = tmp(`zeno_pl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-  await run('yt-dlp', [
-    '--no-playlist', '-q', '--no-warnings', '--no-progress',
-    '-x', '--audio-format', 'mp3', '--audio-quality', quality,
-    '--postprocessor-args', 'ffmpeg:-ar 44100 -ac 2',
-    '--extractor-args', 'youtube:player-client=android,web',
-    '-o', `${base}.%(ext)s`, url,
-  ], { timeout: 5 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 });
-
-  const file = `${base}.mp3`;
-  if (!fs.existsSync(file)) throw new Error('file non generato');
-  return file;
-}
+// ───────────── Download audio (modulo condiviso: ../lib/ytdl.js) ─────────────
+const downloadAudio = (url, quality = '128K') =>
+  ytAudio(url, { quality, ppArgs: 'ffmpeg:-ar 44100 -ac 2' });
 
 // ───────────── Pannello playlist ─────────────
 function buildPanel(uid, page = 0) {
@@ -271,7 +260,7 @@ async function addLink(ctx, uid, link) {
     found = await fetchLinkTracks(link);
   } catch (e) {
     console.error('Errore lettura link:', e.stderr || e.message);
-    return status('❌ Errore durante la lettura del link. Assicurati che sia un link valido.');
+    return status(explainDownloadError(e, '❌ Errore durante la lettura del link. Assicurati che sia un link valido.'));
   }
   if (!found.length) return status('❌ Nessun brano trovato in questo link.');
 
@@ -303,6 +292,7 @@ async function delTrack(ctx, uid, arg) {
 async function playOne(i, index) {
   const track = (readDb()[i.user.id] || [])[index];
   if (!track?.url) return i.reply({ content: '❌ Brano non trovato.', flags: MessageFlags.Ephemeral });
+  if (isBusy()) return i.reply({ content: '⏳ Sto già scaricando altri brani, riprova tra qualche secondo.', flags: MessageFlags.Ephemeral });
 
   await i.deferReply();
   let file = null;
@@ -317,7 +307,7 @@ async function playOne(i, index) {
     });
   } catch (e) {
     console.error('Errore download brano:', e.stderr || e.message);
-    await i.editReply('❌ Errore download.').catch(() => {});
+    await i.editReply(explainDownloadError(e, '❌ Errore download.')).catch(() => {});
   } finally {
     rm(file);
   }
@@ -328,6 +318,8 @@ async function processQueue(uid) {
   const q = global.plQueues[uid];
   if (!q) return;
   let n = 0;
+  let failed = 0;
+  let reason = null;
 
   while (global.plQueues[uid] === q && q.tracks.length) {
     const track = q.tracks.shift();
@@ -347,6 +339,8 @@ async function processQueue(uid) {
       });
     } catch (e) {
       console.error(`Errore coda (${track.title}):`, e.stderr || e.message);
+      failed++;
+      reason = explainDownloadError(e, null) || reason;
     } finally {
       rm(file);
     }
@@ -354,7 +348,8 @@ async function processQueue(uid) {
 
   if (global.plQueues[uid] === q) {
     delete global.plQueues[uid];
-    await q.channel.send('✅ Playlist completata!').catch(() => {});
+    const note = failed ? `\n⚠️ ${failed} brani non scaricati.${reason ? ` ${reason.replace(/^❌ /, '')}` : ''}` : '';
+    await q.channel.send(`✅ Playlist completata!${note}`).catch(() => {});
   }
 }
 
@@ -443,7 +438,7 @@ async function mergePlaylist(ctx, uid, tracks) {
     fs.writeFileSync(metaFile, meta, 'utf8');
 
     await run('ffmpeg', [
-      '-y', '-f', 'concat', '-safe', '0', '-i', listFile, '-i', metaFile,
+      '-y', '-threads', '1', '-f', 'concat', '-safe', '0', '-i', listFile, '-i', metaFile,
       '-map', '0:a', '-map_metadata', '1', '-map_chapters', '1',
       '-c:a', 'aac', '-b:a', `${kbps}k`, '-ar', '44100', '-ac', kbps < 64 ? '1' : '2',
       '-movflags', '+faststart', out,
