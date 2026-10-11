@@ -7,7 +7,7 @@ const { MessageFlags, PermissionFlagsBits, Routes } = require('discord.js');
 
 const ZENO_PLUGINS_DIR = path.join(__dirname, '..', 'zeno', 'plugins');
 
-// Il main.js di Zeno usa process.env.TOKEN, il mio index.js DISCORD_TOKEN: li allineo
+// Il main.js di Zeno usa process.env.TOKEN, il tuo index.js DISCORD_TOKEN: li allineo
 // (serve se qualche plugin di Zeno legge process.env.TOKEN)
 process.env.TOKEN = process.env.TOKEN || process.env.DISCORD_TOKEN;
 
@@ -230,8 +230,41 @@ async function handleInteraction(i, client) {
 }
 
 // ============================================
-// PLUGIN PER IL MIO MOTORE
+// PLUGIN PER IL TUO MOTORE
 // ============================================
+// ---------- Pannello .aiuto (comandi di ZenoBot, prefisso ".") ----------
+// Legge global.zenoPluginsList, riempita da loadZenoPlugins(). Niente liste scritte a mano:
+// quando Zeno aggiunge un comando, compare da solo.
+const AIUTO_MAX = 4000;   // Discord accetta fino a 4096 caratteri nella descrizione di un embed
+function buildAiutoEmbed() {
+    const list = (global.zenoPluginsList || [])
+        .filter((p) => p.desc && !(p.tags || []).includes('nascosto'))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    const byTag = new Map();
+    for (const p of list) {
+        const tag = (p.tags && p.tags[0]) || 'altro';
+        if (!byTag.has(tag)) byTag.set(tag, []);
+        byTag.get(tag).push(`\`.${p.name}\` → ${p.desc}`);
+    }
+
+    let body = '';
+    for (const [tag, lines] of byTag) {
+        body += `**${tag.toUpperCase()}**\n${lines.join('\n')}\n\n`;
+    }
+    if (body.length > AIUTO_MAX) body = body.slice(0, AIUTO_MAX - 40) + '\n\n…(lista troncata)';
+    if (!body) body = 'Nessun comando di ZenoBot caricato al momento.';
+
+    return {
+        embeds: [{
+            color: 0x5865f2,
+            title: '🎵 — COMANDI ZENOBOT (prefisso `.`) —',
+            description: body.trim(),
+            footer: { text: `${list.length} comandi · usa il prefisso . davanti al nome` },
+        }],
+    };
+}
+
 module.exports = {
     name: 'zeno-bridge',
 
@@ -272,6 +305,14 @@ module.exports = {
 
         const command = text.slice(prefix.length).trim().split(' ')[0].toLowerCase();
         const textArg = text.slice(prefix.length + command.length).trim();
+
+        if ((command === 'aiuto' || command === 'comandi') && prefix === '.') {
+            const hasOwn = Object.values(zenoPlugins).some((pl) => pl.command && pl.command.test(command));
+            if (!hasOwn) {
+                await message.reply(buildAiutoEmbed());
+                return;
+            }
+        }
 
         if (command === 'reload' && (await helpers.isOwner(message.author.id))) {
             await reloadAll(client);
