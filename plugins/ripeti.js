@@ -1,10 +1,10 @@
-
-// !ripeti <testo> -> il bot ripete il testo, sempre con l'immagine di Tux
+// !ripeti <testo> -> il bot ripete il testo in un embed, con Tux piccolo come thumbnail
 const fs = require('fs');
 const path = require('path');
+const { EmbedBuilder } = require('discord.js');
 
 const TUX = path.join(__dirname, '../assets/tux1.webp');
-const MAX = 1900;   // Discord accetta 2000 caratteri per messaggio
+const MAX = 4000;   // limite della descrizione di un embed (Discord: 4096)
 
 module.exports = {
     name: 'ripeti',
@@ -21,23 +21,29 @@ module.exports = {
 
         // allowedMentions vuoto: se l'utente scrive @everyone o @ruolo, il bot non fa scattare la notifica
         const opzioni = { allowedMentions: { parse: [] } };
-        const contenuto = testo.slice(0, MAX);
+        const embed = new EmbedBuilder()
+            .setDescription(testo.slice(0, MAX))
+            .setColor(0x5865f2);
 
         if (!fs.existsSync(TUX)) {
             console.error(`Errore ripeti: immagine non trovata in ${TUX}`);
-            await message.channel.send({ content: contenuto, ...opzioni }).catch(() => {});
+            await message.channel.send({ ...opzioni, embeds: [embed] }).catch(() => {});
             return;
         }
 
         try {
+            embed.setThumbnail('attachment://tux1.webp');
             await message.channel.send({
-                content: contenuto,
-                files: [{ attachment: TUX, name: 'tux1.webp' }],
                 ...opzioni,
+                embeds: [embed],
+                files: [{ attachment: TUX, name: 'tux1.webp' }],
             });
         } catch (e) {
             console.error('Errore ripeti:', e.message);
-            await message.channel.send({ content: contenuto, ...opzioni }).catch(() => {});
+            await message.channel.send({
+                ...opzioni,
+                embeds: [new EmbedBuilder().setDescription(testo.slice(0, MAX)).setColor(0x5865f2)],
+            }).catch(() => {});
         }
     }
 };
