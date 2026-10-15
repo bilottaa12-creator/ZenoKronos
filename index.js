@@ -12,6 +12,7 @@ const path = require('path');
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { connectDB } = require('./db');
 const logger = require('./utils');
+const { buildRegistry, dispatch, dispatchComponent } = require('./lib/commands');
 
 // ============================================
 // CONFIGURAZIONE
@@ -95,7 +96,9 @@ function loadPlugins() {
 
             // Verifica che abbia almeno una funzione handler
             const hasHandler = ['onMessage', 'onAuditLogEntry', 'onMemberAdd', 'onReady']
-                .some(method => typeof plugin[method] === 'function');
+                .some(method => typeof plugin[method] === 'function')
+                || (Array.isArray(plugin.commands) && typeof plugin.run === 'function')
+                || (typeof plugin.prefix === 'string' && typeof plugin.onComponent === 'function');
 
             if (!hasHandler) {
                 console.warn(`⚠️ Plugin ${file} ignorato: nessun handler valido trovato.`);
@@ -119,6 +122,7 @@ function loadPlugins() {
 }
 
 const plugins = loadPlugins();
+const commandRegistry = buildRegistry(plugins);
 console.log(`✅ Totale plugin caricati: ${plugins.length}`);
 
 // ============================================
@@ -153,6 +157,13 @@ async function executePluginMethod(plugins, methodName, args) {
 client.on('messageCreate', async (message) => {
     if (message.author.id === client.user.id) return;
     await executePluginMethod(plugins, 'onMessage', [message, { store, client }]);
+    await dispatch(message, { store, client }, commandRegistry);
+});
+
+// Event: interactionCreate (bottoni e menu dei plugin)
+client.on('interactionCreate', async (i) => {
+    if (!(i.isButton?.() || i.isStringSelectMenu?.() || i.isModalSubmit?.())) return;
+    await dispatchComponent(i, { store, client }, plugins);
 });
 
 // Event: guildAuditLogEntryCreate
