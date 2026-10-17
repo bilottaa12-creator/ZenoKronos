@@ -31,4 +31,6 @@ Thumbs.db
 
 # File temporanei
 tmp/
-temp/
+temp/playlist_db.json
+profiles_db.json
+database/
