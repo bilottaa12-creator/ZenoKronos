@@ -1,71 +1,72 @@
+// plugins/help.js: !aiuto (o !comandi, !help, anche con il punto) -> elenco di tutti i comandi.
+// Si aggiorna da solo: legge i comandi del bot (registro) e quelli di Zeno ancora caricati
+// (global.zenoPluginsList). Quando un comando di Zeno viene convertito, passa da una lista all'altra.
+// I plugin con il tag "nascosto" non compaiono.
 const { EmbedBuilder } = require('discord.js');
+
+const MAX_DESCRIZIONE = 4000;
+
+function raccogli(registry) {
+    const lista = [];
+    const visti = new Set();
+
+    // 1) I nostri plugin: una voce per plugin, anche se ha più alias
+    for (const plugin of new Set(registry ? registry.values() : [])) {
+        const comandi = plugin.commands || [];
+        if (!comandi.length || (plugin.tags || []).includes('nascosto')) continue;
+        lista.push({ nome: comandi[0], comandi, desc: plugin.desc || 'nessuna descrizione', tags: plugin.tags || [] });
+        visti.add(comandi[0]);
+    }
+
+    // 2) I plugin di Zeno ancora caricati dal bridge (se ce ne sono)
+    for (const p of global.zenoPluginsList || []) {
+        if (!p.name || visti.has(p.name) || (p.tags || []).includes('nascosto')) continue;
+        lista.push({ nome: p.name, comandi: [p.name], desc: p.desc || 'nessuna descrizione', tags: p.tags || [] });
+        visti.add(p.name);
+    }
+
+    return lista.sort((a, b) => a.nome.localeCompare(b.nome));
+}
+
+const maiuscola = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+
+function costruisci(registry) {
+    const voci = raccogli(registry);
+
+    // Raggruppa per categoria (primo tag del plugin)
+    const gruppi = new Map();
+    for (const v of voci) {
+        const cat = v.tags[0] ? maiuscola(v.tags[0]) : 'Altro';
+        if (!gruppi.has(cat)) gruppi.set(cat, []);
+        const alias = v.comandi.slice(1).map((c) => `\`${c}\``).join(', ');
+        gruppi.get(cat).push(`\`!${v.nome}\` \`.${v.nome}\` → ${v.desc}${alias ? ` (alias: ${alias})` : ''}`);
+    }
+
+    let testo = '';
+    for (const [cat, righe] of [...gruppi.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+        testo += `**${cat}**\n${righe.join('\n')}\n\n`;
+    }
+    if (testo.length > MAX_DESCRIZIONE) {
+        testo = testo.slice(0, MAX_DESCRIZIONE - 40) + '\n\n…(lista troncata)';
+    }
+    if (!testo) testo = 'Nessun comando caricato al momento.';
+
+    return new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle('📖 Comandi di ZenoKronos')
+        .setDescription(testo.trim())
+        .setFooter({ text: `${voci.length} comandi · puoi scrivere ! oppure . davanti al nome` });
+}
 
 module.exports = {
     name: 'help',
+    commands: ['aiuto', 'comandi', 'help'],
+    desc: 'Elenco di tutti i comandi, aggiornato da solo',
+    tags: ['info'],
 
-    async onMessage(message, ctx) {
-        const content = message.content.trim();
-        if (content !== '!aiuto' && content !== '!comandi') return false;
+    async run(message, ctx) {
+        return message.reply({ embeds: [costruisci(ctx.registry)] });
+    },
 
-        // Link diretto al file mp4 (raw GitHub, permanente)
-        const videoUrl = 'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/assets/help-banner.mp4';
-
-        const embed = new EmbedBuilder()
-            .setColor(0x5865F2)
-            .setTitle('🛡️ — SICUREZZA BOT — 🛡️')
-            .setDescription('Benvenuto nel pannello comandi ufficiale del bot!')
-            .addFields(
-                {
-                    name: '🔒 — SICUREZZA —',
-                    value:
-                        '`!scudo-lock` → Blocca tutti i canali (lockdown emergenza)\n' +
-                        '`!scudo-unlock` → Ripristina lo stato precedente dei canali\n' +
-                        '`!timeout @utente <minuti>` → Applica timeout (alias: `!muta`, `!mute`, `!blocca`)\n' +
-                        '`!untimeout @utente` → Rimuove il timeout (alias: `!smuta`, `!unmute`, `!sblocca`)\n' +
-                        '`!purge <numero>` → Cancella in blocco gli ultimi messaggi (max 100, ultimi 14gg)\n' +
-                        '`!warn @utente <motivo>` → Richiama un utente (al 3° richiamo: timeout automatico)\n' +
-                        '`!warnings @utente` → Vedi i richiami di qualcuno (alias `!avvisi`)\n' +
-                        '`!unwarn @utente [numero]` → Toglie un richiamo (senza numero, toglie l\'ultimo)\n' +
-                        '`!clearwarn @utente` → Azzera tutti i richiami di un utente\n' +
-                        '`!antilink-on` / `!antilink-off` → Blocca link sospetti (tracciamento, phishing, accorciatori)'
-                },
-                {
-                    name: '🎉 — DIVERTIMENTO —',
-                    value:
-                        '`!tux-on` / `!tux-off` → Modalità Tux (immagine 🐧 ad ogni messaggio)\n' +
-                        '`!parla` / `!parla-off` → Modalità frasi assurde generate dall\'AI\n' +
-                        '`!duello @utente` → Sfida assurda generata dall\'AI, vince a caso\n' +
-                        '`!palla <domanda>` → Palla magica, risponde sì/no/forse (alias `!8ball`)\n' +
-                        '`!quiz` → Quiz di cultura generale (30s per rispondere), `!quizrank` per la classifica\n' +
-                        '`!ctf` → Decifra la parola nascosta (ROT13/Base64/Cesare/hex/binario), `!ctfrank` per la classifica'
-                },
-                {
-                    name: '🤖 — INTELLIGENZA ARTIFICIALE —',
-                    value: '`!ask <domanda>` → Fai una domanda all\'AI del bot (aperto a tutti)'
-                },
-                {
-                    name: 'ℹ️ — UTILITY —',
-                    value:
-                        '`!server` → Statistiche del server (membri, canali, boost, ecc.) (alias `!serverinfo`)\n' +
-                        '`!top` → Classifica dei membri più attivi per messaggi (alias `!classifica`)\n' +
-                        '`!rank [@utente]` → La tua posizione in classifica (o quella di qualcun altro)\n' +
-                        '`!afk [motivo]` → Ti segna come assente, risponde per te a chi ti tagga\n' +
-                        '`!sondaggio [durata] <domanda> [| opzione1 | opzione2...]` → Sondaggio con reazioni, risultati automatici (default 1min, es. `5m`)'
-                }
-            )
-            .setFooter({ text: 'Solo mod/admin possono usare i comandi di sicurezza' });
-
-        try {
-            // Primo messaggio: il video come allegato
-            await message.reply({ files: [videoUrl] });
-            // Secondo messaggio: il pannello comandi
-            await message.channel.send({ embeds: [embed] });
-        } catch (err) {
-            console.error('[ERRORE AIUTO]:', err.message);
-            // Fallback: manda solo l'embed se il video fallisce
-            await message.channel.send({ embeds: [embed] });
-        }
-
-        return true;
-    }
+    _test: { raccogli, costruisci },
 };
