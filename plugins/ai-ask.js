@@ -52,7 +52,7 @@ module.exports = {
 
         } catch (err) {
             console.error('[ERRORE AI-ASK]:', err.message);
-            await message.reply('⚠️ Qualcosa è andato storto, riprova tra poco.');
+            await message.reply('⚠️ Qualcosa è andato storto, riprova tra poco.').catch(() => {});
         }
 
         return true;
