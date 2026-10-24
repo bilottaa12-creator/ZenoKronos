@@ -52,7 +52,7 @@ module.exports = {
         }
 
         // Motivo: tutto il testo dopo la menzione (senza il nome del comando, già tolto dal dispatcher)
-        const motivo = (ctx.rest || '').replace(/<@!?\d+>/g, '').trim() || 'Nessun motivo specificato';
+        const motivo = (ctx.rest || '').replace(/<@!?\d+>/g, '').trim().slice(0, 400) || 'Nessun motivo specificato';
 
         // Avviso in DM prima di espellere; se i DM sono chiusi si va avanti lo stesso
         await target.createDM()
