@@ -5,6 +5,7 @@
 const { EmbedBuilder } = require('discord.js');
 
 const MAX_DESCRIZIONE = 4000;
+const VIDEO = 'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/assets/help-banner.mp4';
 
 function raccogli(registry) {
     const lista = [];
@@ -20,7 +21,7 @@ function raccogli(registry) {
 
     // 2) I plugin di Zeno ancora caricati dal bridge (se ce ne sono)
     for (const p of global.zenoPluginsList || []) {
-        if (!p.name || visti.has(p.name) || (p.tags || []).includes('nascosto')) continue;
+        if (!p.name || !p.desc || p.name.includes('.') || visti.has(p.name) || (p.tags || []).includes('nascosto')) continue;
         lista.push({ nome: p.name, comandi: [p.name], desc: p.desc || 'nessuna descrizione', tags: p.tags || [] });
         visti.add(p.name);
     }
@@ -65,7 +66,9 @@ module.exports = {
     tags: ['info'],
 
     async run(message, ctx) {
-        return message.reply({ embeds: [costruisci(ctx.registry)] });
+        // Come prima: il video di presentazione, poi l'elenco. Se il video non parte, va avanti lo stesso.
+        await message.reply({ files: [VIDEO] }).catch((err) => console.error('[AIUTO] video:', err.message));
+        return message.channel.send({ embeds: [costruisci(ctx.registry)] });
     },
 
     _test: { raccogli, costruisci },
