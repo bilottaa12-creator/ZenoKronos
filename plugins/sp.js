@@ -1,5 +1,5 @@
 // plugins/sp.js: mostra il brano Spotify che un utente sta ascoltando. !sp oppure !sp @utente
-// Richiede l'intent GuildPresences nel bot e il permesso "Presence Intent" nel Developer Portal.
+// Richiede l'intent GuildPresences nel bot e il permessoΩ"Presence Intent" nel Developer Portal
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ActivityType } = require('discord.js');
 
 const MENZIONE = /<@!?(\d+)>/;
