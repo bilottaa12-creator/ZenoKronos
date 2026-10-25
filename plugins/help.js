@@ -29,6 +29,41 @@ function raccogli(registry) {
     return lista.sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
+// Comandi dei plugin non ancora convertiti: non dichiarano il proprio elenco, quindi li scriviamo qui.
+// Quando un plugin viene convertito, togli la sua riga da questo testo: comparirà da solo nell'elenco sopra.
+const ALTRI_TESTO = `**🔒 Sicurezza**
+\`!scudo-lock\` / \`!scudo-unlock\` → blocca / ripristina tutti i canali
+\`!timeout @utente <minuti>\` / \`!untimeout @utente\` → muta / smuta
+\`!purge <numero>\` → cancella in blocco gli ultimi messaggi (max 100)
+\`!warn @utente <motivo>\` → richiamo (al 3° timeout automatico)
+\`!warnings @utente\`, \`!unwarn @utente\`, \`!clearwarn @utente\` → gestione richiami
+\`!antilink-on\` / \`!antilink-off\` → blocca link sospetti
+
+**🎉 Divertimento**
+\`!tux-on\` / \`!tux-off\` → modalità Tux (immagine ad ogni messaggio)
+\`!parla\` / \`!parla-off\` → frasi assurde generate dall'AI
+\`!duello @utente\` → sfida assurda, vince a caso
+\`!palla <domanda>\` → palla magica (alias \`!8ball\`)
+\`!quiz\` / \`!quizrank\` → quiz di cultura generale (30s per rispondere)
+\`!ctf\` / \`!ctfrank\` → decifra la parola nascosta
+
+**🤖 Intelligenza artificiale**
+\`!ask <domanda>\` → domanda all'AI del bot
+
+**ℹ️ Utility**
+\`!server\` → statistiche del server (alias \`!serverinfo\`)
+\`!top\` / \`!rank [@utente]\` → classifica dei membri più attivi
+\`!afk [motivo]\` → ti segna come assente, risponde per te
+\`!sondaggio [durata] <domanda> [| opzione1 | opzione2...]\` → sondaggio con reazioni`;
+
+function altriComandi() {
+    return new EmbedBuilder()
+        .setColor(0x95a5a6)
+        .setTitle('📜 Altri comandi')
+        .setDescription(ALTRI_TESTO)
+        .setFooter({ text: 'Questi si sposteranno nell\'elenco sopra quando saranno convertiti' });
+}
+
 const maiuscola = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
 function costruisci(registry) {
@@ -68,8 +103,9 @@ module.exports = {
     async run(message, ctx) {
         // Come prima: il video di presentazione, poi l'elenco. Se il video non parte, va avanti lo stesso.
         await message.reply({ files: [VIDEO] }).catch((err) => console.error('[AIUTO] video:', err.message));
-        return message.channel.send({ embeds: [costruisci(ctx.registry)] });
+        await message.channel.send({ embeds: [costruisci(ctx.registry)] });
+        return message.channel.send({ embeds: [altriComandi()] });
     },
 
-    _test: { raccogli, costruisci },
+    _test: { raccogli, costruisci, altriComandi },
 };
