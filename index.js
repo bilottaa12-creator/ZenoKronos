@@ -37,6 +37,7 @@ connectDB();
 // CREAZIONE CLIENT DISCORD
 // ============================================
 const client = new Client({
+    allowedMentions: { parse: [], repliedUser: false },
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
@@ -138,7 +139,7 @@ async function executePluginMethod(plugins, methodName, args) {
             // Se il plugin ritorna true, interrompe l'esecuzione degli altri
             if (result === true) {
                 console.log(`🔍 Plugin "${plugin.name}" ha interrotto la catena.`);
-                break;
+                return true;
             }
         } catch (err) {
             console.error(`❌ Errore nel plugin "${plugin.name}" (${methodName}): ${err.message}`);
@@ -147,6 +148,7 @@ async function executePluginMethod(plugins, methodName, args) {
             }
         }
     }
+    return false;
 }
 
 // ============================================
@@ -156,7 +158,8 @@ async function executePluginMethod(plugins, methodName, args) {
 // Event: messageCreate
 client.on('messageCreate', async (message) => {
     if (message.author.id === client.user.id) return;
-    await executePluginMethod(plugins, 'onMessage', [message, { store, client }]);
+    const fermato = await executePluginMethod(plugins, 'onMessage', [message, { store, client }]);
+    if (fermato) return;   // es. link bloccato dall'antilink: il messaggio non esegue comandi
     await dispatch(message, { store, client }, commandRegistry);
 });
 
