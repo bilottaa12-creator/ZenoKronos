@@ -33,7 +33,6 @@ function raccogli(registry) {
 // Quando un plugin viene convertito, togli la sua riga da questo testo: comparirà da solo nell'elenco sopra.
 const ALTRI_TESTO = `**🔒 Sicurezza**
 \`!scudo-lock\` / \`!scudo-unlock\` → blocca / ripristina tutti i canali
-\`!timeout @utente <minuti>\` / \`!untimeout @utente\` → muta / smuta
 \`!purge <numero>\` → cancella in blocco gli ultimi messaggi (max 100)
 \`!warn @utente <motivo>\` → richiamo (al 3° timeout automatico)
 \`!warnings @utente\`, \`!unwarn @utente\`, \`!clearwarn @utente\` → gestione richiami
