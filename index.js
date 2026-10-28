@@ -43,7 +43,8 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildModeration
+        GatewayIntentBits.GuildModeration,
+        GatewayIntentBits.GuildPresences   // stato Spotify: serve a !sp (vedi Presence Intent nel portale)
     ],
     partials: [
         Partials.Message,
