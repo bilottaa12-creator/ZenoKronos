@@ -134,6 +134,10 @@ module.exports = {
         } catch (err) {
             console.error('Errore shazam:', err.message);
             await message.react('❌').catch(() => {});
+            // Shazam risponde "No song matched" quando l'audio non è una canzone riconoscibile (es. parlato)
+            if (/No song matched/i.test(err.message)) {
+                return message.reply('❌ Non sono riuscito a riconoscere questa canzone: nell\'audio non c\'è musica riconoscibile (es. parlato o rumore).');
+            }
             return message.reply('❌ Errore durante il riconoscimento della canzone.');
         } finally {
             rimuovi(input);
