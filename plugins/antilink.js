@@ -1,4 +1,5 @@
-const { eModeratoreOAdmin, inviaLogSicurezza } = require('../utils');
+const { inviaLogSicurezza } = require('../utils');
+const { isStaff } = require('../lib/staff');
 const { GuildSettings } = require('../db');
 
 // Servizi noti per rubare IP o tracciare chi clicca (travestiti da link normali)
@@ -46,7 +47,7 @@ module.exports = {
         const content = message.content.trim();
 
         if (content === '!antilink-on' || content === '!antilink-off') {
-            if (!(await eModeratoreOAdmin(message.member))) {
+            if (!(await isStaff(message))) {
                 await message.reply('❌ Solo mod/admin');
                 return true;
             }
@@ -73,7 +74,7 @@ module.exports = {
         }
 
         if (content.startsWith('!antilink-test ')) {
-            if (!(await eModeratoreOAdmin(message.member))) {
+            if (!(await isStaff(message))) {
                 await message.reply('❌ Solo mod/admin');
                 return true;
             }
@@ -90,7 +91,7 @@ module.exports = {
         }
 
         // Controllo passivo su ogni messaggio (solo se attivo e non è un mod)
-        if (await eModeratoreOAdmin(message.member)) return false;
+        if (await isStaff(message)) return false;
 
         const url = estraiUrl(message.content);
         if (url.length === 0) return false;

@@ -1,4 +1,6 @@
-const { eModeratoreOAdmin, inviaLogSicurezza } = require('../utils');
+const { PermissionFlagsBits } = require('discord.js');
+const { inviaLogSicurezza } = require('../utils');
+const { isStaff } = require('../lib/staff');
 
 function getGuildStore(store, guildId) {
     if (!store[guildId]) store[guildId] = {};
@@ -12,7 +14,8 @@ async function salvaSnapshotEBlocca(guild, guildStore) {
         guildStore.modOverridesAggiunti = []; // {channelId, roleId} aggiunti solo per i mod
 
         // Ruoli che contengono "mod" nel nome (stessa logica di eModeratoreOAdmin)
-        const ruoliMod = guild.roles.cache.filter(r => r.name.toLowerCase().includes('mod'));
+        // Ruoli con poteri di moderazione (per permessi, non per nome)
+        const ruoliMod = guild.roles.cache.filter(r => r.permissions.has(PermissionFlagsBits.ModerateMembers) || r.permissions.has(PermissionFlagsBits.ManageMessages) || r.permissions.has(PermissionFlagsBits.Administrator));
 
         for (const [channelId, channel] of channels) {
             if (channel && channel.isTextBased() && !channel.isThread()) {
@@ -111,7 +114,7 @@ module.exports = {
         if (guildStore.serverBloccato === undefined) guildStore.serverBloccato = false;
 
         if (message.content.trim() === '!scudo-lock') {
-            if (!(await eModeratoreOAdmin(message.member))) {
+            if (!(await isStaff(message))) {
                 await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
                 return true;
             }
@@ -126,7 +129,7 @@ module.exports = {
         }
 
         if (message.content.trim() === '!scudo-unlock') {
-            if (!(await eModeratoreOAdmin(message.member))) {
+            if (!(await isStaff(message))) {
                 await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
                 return true;
             }
@@ -141,7 +144,7 @@ module.exports = {
         }
 
         if (guildStore.serverBloccato) {
-            if (!(await eModeratoreOAdmin(message.member))) {
+            if (!(await isStaff(message))) {
                 try {
                     await message.delete();
                 } catch (err) {

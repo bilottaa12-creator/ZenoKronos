@@ -1,4 +1,5 @@
-const { eModeratoreOAdmin, inviaLogSicurezza } = require('../utils');
+const { inviaLogSicurezza } = require('../utils');
+const { isStaff } = require('../lib/staff');
 const { Warning } = require('../db');
 
 const SOGLIA_ESCALATION = 3;
@@ -12,7 +13,7 @@ module.exports = {
 
         // !warn @utente <motivo>
         if (content.startsWith('!warn ') || content === '!warn') {
-            if (!(await eModeratoreOAdmin(message.member))) {
+            if (!(await isStaff(message))) {
                 await message.reply('❌ Solo mod/admin');
                 return true;
             }
@@ -107,7 +108,7 @@ module.exports = {
 
         // !unwarn @utente [numero] — solo mod/admin. Senza numero toglie l'ultimo richiamo.
         if (content.startsWith('!unwarn')) {
-            if (!(await eModeratoreOAdmin(message.member))) {
+            if (!(await isStaff(message))) {
                 await message.reply('❌ Solo mod/admin');
                 return true;
             }
@@ -162,7 +163,7 @@ module.exports = {
 
         // !clearwarn @utente — solo mod/admin
         if (content.startsWith('!clearwarn')) {
-            if (!(await eModeratoreOAdmin(message.member))) {
+            if (!(await isStaff(message))) {
                 await message.reply('❌ Solo mod/admin');
                 return true;
             }

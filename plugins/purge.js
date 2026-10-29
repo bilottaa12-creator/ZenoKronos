@@ -1,4 +1,4 @@
-const { eModeratoreOAdmin } = require('../utils');
+const { isStaff } = require('../lib/staff');
 
 module.exports = {
     name: 'purge',
@@ -6,7 +6,7 @@ module.exports = {
     async onMessage(message, ctx) {
         if (!message.content.trim().startsWith('!purge')) return false;
 
-        if (!(await eModeratoreOAdmin(message.member))) {
+        if (!(await isStaff(message))) {
             await message.reply('❌ Solo mod/admin');
             return true;
         }
