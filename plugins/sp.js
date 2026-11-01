@@ -1,6 +1,7 @@
 // plugins/sp.js: mostra il brano Spotify che un utente sta ascoltando. !sp oppure !sp @utente
 // Richiede l'intent GuildPresences nel bot e il permesso "Presence Intent" nel Developer Portal.
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ActivityType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ActivityType, AttachmentBuilder } = require('discord.js');
+const { makeCard } = require('../lib/spmake');
 
 const MENZIONE = /<@!?(\d+)>/;
 
@@ -63,6 +64,25 @@ module.exports = {
         const riga = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('like:0').setLabel('0').setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
         );
+        // Card come immagine (come quella di Yervinboss). Senza la libreria grafica resta l'embed.
+        const inizioCard = spotify.timestamps?.start;
+        const fineCard = spotify.timestamps?.end;
+        const totaleCard = inizioCard && fineCard && fineCard > inizioCard ? fineCard - inizioCard : 0;
+        const trascorsoCard = totaleCard ? Math.min(Math.max(Date.now() - inizioCard, 0), totaleCard) : 0;
+        const card = await makeCard({
+            badge: 'IN ASCOLTO SU SPOTIFY',
+            title: spotify.details || 'Brano sconosciuto',
+            artist: spotify.state || 'Artista sconosciuto',
+            album: spotify.assets?.largeText || '',
+            coverUrl: copertina,
+            userName: membro.user.username,
+            avatarUrl: membro.user.displayAvatarURL({ extension: 'png', size: 64 }),
+            elapsed: trascorsoCard,
+            total: totaleCard,
+        }).catch(() => null);
+        if (card) {
+            return message.reply({ files: [new AttachmentBuilder(card.buffer, { name: 'sp-card.png' })], components: [riga] });
+        }
         return message.reply({ embeds: [embed], components: [riga] });
     },
 };
